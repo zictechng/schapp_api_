@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\AcademicSessionController;
 use App\Http\Controllers\API\AdminUserController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\CAResultController;
 use App\Http\Controllers\API\ClassController;
 use App\Http\Controllers\API\CurrentSessionController;
 use App\Http\Controllers\API\DaysSchoolopenController;
@@ -98,6 +99,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('save_text', [StudentController::class, 'saveText']);
 
 
+
     Route::get('fetch_all_staff', [StaffController::class, 'getStaff']);
     Route::post('save_staff', [StaffController::class, 'saveStaff']);
     Route::get('fetch_edit_staff/{id}', [StaffController::class, 'fetchStaff']);
@@ -117,7 +119,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('result_process_start', [ResultController::class, 'resultProcessStart']);
     Route::post('result_process_save', [ResultController::class, 'resultSave']);
     Route::get('get_result_process/{id}', [ResultController::class, 'getFetchResult']);
+    Route::delete('delete_result/{id}', [ResultController::class, 'deleteResult']);
     Route::post('process_result', [TestRecordController::class, 'processSaveResult']);
+    Route::post('save_result_process', [ResultController::class, 'saveResultProcess']);
+    Route::post('single_result_save', [ResultController::class, 'resultSingleSave']);
+    Route::post('view_result_process', [ResultController::class, 'viewResultProcess']);
+    Route::get('load_view_result/{id}', [ResultController::class, 'loadResultView']);
+    Route::get('get_resultview/{id}', [ResultController::class, 'loadView']);
+    Route::post('update_result_view', [ResultController::class, 'updateResultView']);
+    Route::delete('delete_result_view/{id}', [ResultController::class, 'deleteResultView']);
+    Route::post('view_result_subject', [ResultController::class, 'viewSubjectResult']);
+    Route::get('load_view_subject/{id}', [ResultController::class, 'loadSubjectView']);
+
+    Route::get('fetch_ca_result', [CAResultController::class, 'getAllCA']);
+    Route::post('result_process_ca', [CAResultController::class, 'processAllCA']);
+    Route::get('get_ca_result_process/{id}', [CAResultController::class, 'getFetchProcessCA']);
+    Route::post('result_ca_save', [CAResultController::class, 'resultCASave']);
+    Route::post('result_single_ca_save', [CAResultController::class, 'resultSingleCASave']);
+    Route::delete('delete_ca_result/{id}', [CAResultController::class, 'deleteCA']);
 });
 
 

@@ -38,7 +38,7 @@ class ResultTable extends Model
         'result_highest',
         'result_action_date',
     ];
-    protected $with = ['class_name', 'sch_year', 'sch_category', 'sch_term', 'subject'];  // this will pass it to javascript, jquery or any other programming platform outside laravel
+    protected $with = ['class_name', 'sch_year', 'sch_category', 'sch_term', 'term_subject'];  // this will pass it to javascript, jquery or any other programming platform outside laravel
     public function class_name()
     {
         return $this->belongsTo(ClassModel::class, 'class', 'id'); // this is for normal laravel format
@@ -51,12 +51,16 @@ class ResultTable extends Model
     {
         return $this->belongsTo(TermModel::class, 'academy_term', 'id'); // this is for normal laravel format
     }
-    public function subject()
+    public function term_subject()
     {
         return $this->belongsTo(Subject::class, 'subject', 'id'); // this is for normal laravel format
     }
     public function sch_category()
     {
         return $this->belongsTo(SchoolCategory::class, 'school_category', 'id'); // this is for normal laravel format
+    }
+    public function st_name()
+    {
+        return $this->belongsTo(Student::class, 'admin_number', 'st_admin_number'); // this is for normal laravel format
     }
 }
