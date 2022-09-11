@@ -83,6 +83,7 @@ class CAResultController extends Controller
                     $save_new->subject = $request['subject'];
                     $save_new->tid_code = $tid;
                     $save_new->add_by = $userDetails->username;
+                    $save_new->addby_user_id = $userDetails->id;
                     $save_new->record_date = date('d/m/Y H:i:s');
                     $save_new->status = 'Active';
 
@@ -176,7 +177,7 @@ class CAResultController extends Controller
                 $get_recordID = ResultCA::where('rst_tid', $recordID)->first();
                 // get student name base on the admission number here...
                 $get_studentName = Student::where('st_admin_number', $data['admin_number'])->first();
-                ResultCA::query()->where('admin_number', $get_studentName->st_admin_number)->where('tid_code', $recordID)
+                ResultCA::query()->where('st_admin_id', $get_studentName->st_admin_number)->where('rst_tid', $recordID)
                     ->update([
                         'st_name' => $get_studentName->other_name,
                     ]);
@@ -215,6 +216,7 @@ class CAResultController extends Controller
             $keep->sch_category = $categoryName->sc_name;
             $keep->subject = $sbujectName->subject_name;
             $keep->add_by = $userDetails->username;
+            $keep->addby_user_id = $userDetails->id;
             $keep->status = "Saved, Successfully";
             $keep->record_date = date('d/m/Y H:i:s');
             $keep->save();
@@ -329,6 +331,8 @@ class CAResultController extends Controller
             $keep->sch_category = $categoryName->sc_name;
             $keep->subject = $sbujectName->subject_name;
             $keep->add_by = $userDetails->username;
+            $keep->addby_user_id = $userDetails->id;
+
             $keep->status = "Saved, Successfully";
             $keep->record_date = date('d/m/Y H:i:s');
             $keep->save();
@@ -411,6 +415,220 @@ class CAResultController extends Controller
             return response()->json([
                 'status' => 402,
                 'message' => "something went wrong! Try again",
+            ]);
+        }
+    }
+
+    // fetch CA details for viewing details page here...
+
+    public function getCADetails($id)
+    {
+        if (auth('sanctum')->check()) {
+            $fetch_CAResult = ResultCA::where('rst_tid', $id)->get();
+            $fetch_CAResults = ResultCA::where('rst_tid', $id)->first();
+            if (!empty($fetch_CAResult)) {
+                return response()->json([
+                    'status' => 200,
+                    'resultAll' => [
+                        'fetch_info' => $fetch_CAResult,
+                        'other' => $fetch_CAResults,
+                    ]
+
+                ]);
+            } else
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record found!',
+                ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // delete_all CA from viewing detail page here...
+    public function deleteAllCA($id)
+    {
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
+            $check_deleteID = ResultCA::where('rst_tid', $id)->first();
+            if (!empty($check_deleteID)) {
+                // run multiple_delete with query here
+                ResultCA::query()
+                    ->where('rst_tid', $id)
+                    ->update([
+                        'rst_status' => "Deleted",
+                    ]);
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_username = $userDetails->username;
+                $logs->m_action = "Deleted CA result ";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, All CA result was deleted";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_uid = $userDetails->id;
+                $logs->m_ip = request()->ip;
+                $logs->save();
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'All Deleted Successfully',
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found at the moment",
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // delete single CA from viewing details page here...
+    public function deleteCA_ID($id)
+    {
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
+            $check_deleteID = ResultCA::where('id', $id)->first();
+            if (!empty($check_deleteID)) {
+                // run single delete with query here
+                ResultCA::query()
+                    ->where('id', $id)
+                    ->update([
+                        'rst_status' => "Deleted",
+                    ]);
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_username = $userDetails->username;
+                $logs->m_action = "Deleted CA result ";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, CA result was deleted";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_uid = $userDetails->id;
+                $logs->m_ip = request()->ip;
+                $logs->save();
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Record Deleted Successfully',
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found at the moment",
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // fetch CA result for edit in viewing details page here...
+    public function fetchCA_ID($id)
+    {
+        if (auth('sanctum')->check()) {
+            $fetch_caResult = ResultCA::where('id', $id)->first();
+            if (!empty($fetch_caResult)) {
+                return response()->json([
+                    'status' => 200,
+                    'fetch_info_CA' => $fetch_caResult,
+                ]);
+            } else
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record found!',
+                ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // update CA result details from viewing details page here...
+    public function saveCAUpdate(Request $request)
+    {
+        if (auth('sanctum')->check()) {
+            //dd($request->all());
+            //validate input details
+            $validator = Validator::make($request->all(), [
+                'ca1' => 'required',
+                'ca2' => 'required',
+                'ca_total' => 'required',
+            ], [
+                'ca1.required' => 'CA 1 Required',
+                'ca2.required' => 'CA 2 Required',
+                'ca_total.required' => 'Total CA Required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    $errors = $validator->errors(),
+                    'status' => 422,
+                    'errors' => $errors,
+                ]);
+            }
+            //if CA_value is greater than 20
+            if ($request->ca1 > "20" || $request->ca2 > "20") {
+                return response()->json([
+                    $errors = $validator->errors(),
+                    'status' => 423,
+                    'errors' => "CA Score exceed 20",
+                ]);
+            }
+            //if CA_total value is greater than 40
+            if ($request->ca_total > "40") {
+                return response()->json([
+                    $errors = $validator->errors(),
+                    'status' => 423,
+                    'errors' => "CA Total Score exceed 40",
+                ]);
+            }
+            $recordID = $request->id;
+            $userDetails = auth('sanctum')->user();
+            $check_updateCA_ID = ResultCA::where('id', $recordID)->first();
+
+            if (!empty($check_updateCA_ID)) {
+                // rund the update query here
+                $check_updateCA_ID->update([
+                    'ca1' => $request->ca1,
+                    'ca2' => $request->ca2,
+                    'ca_total' => $request->ca_total,
+                ]);
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_username = $userDetails->username;
+                $logs->m_action = "Update CA Result";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, Update CA result details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_uid = $userDetails->id;
+                $logs->m_ip = request()->ip;
+                $logs->save();
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Record Updated Successfully',
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found at the moment",
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
             ]);
         }
     }

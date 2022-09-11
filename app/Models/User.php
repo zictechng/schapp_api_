@@ -32,7 +32,8 @@ class User extends Authenticatable
         'acct_status',
         'reg_status',
         'occupation',
-        'photo'
+        'photo',
+        'role'
     ];
 
     /**

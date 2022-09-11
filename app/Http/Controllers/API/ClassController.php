@@ -92,17 +92,24 @@ class ClassController extends Controller
     }
 
     // fetch all class details here
-    public function fetchClass()
+    public function fetchClassDetail()
     {
         if (auth('sanctum')->check()) {
 
             $user_details = auth('sanctum')->user();
             //$userWallet = User::where('id', $sender_details->id)->where('acct_status', 'Active')->sum('gamount');
             $class_details = ClassModel::where('status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'class_record' => $class_details,
-            ]);
+            if (!empty($class_details)) {
+                return response()->json([
+                    'status' => 200,
+                    'class_record' => $class_details,
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found",
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,

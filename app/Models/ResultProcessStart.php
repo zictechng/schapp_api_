@@ -17,6 +17,7 @@ class ResultProcessStart extends Model
         'subject',
         'r_tid',
         'addby',
+        'addby_id',
         'r_status',
         'r_date',
     ];

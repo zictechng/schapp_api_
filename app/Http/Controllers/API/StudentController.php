@@ -10,9 +10,11 @@ use App\Models\SchoolCategory;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\TermModel;
+use App\Models\TestSave;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 class StudentController extends Controller
@@ -345,7 +347,7 @@ class StudentController extends Controller
             $userDetails = auth('sanctum')->user();
 
             $validator = Validator::make($request->all(), [
-                'image' => 'required|mimes:jpeg,png,jpg,gif',
+                'image' => 'required|mimes:jpeg,png,jpg,gif|max:2048',
 
             ]);
             if ($validator->fails()) {
@@ -417,12 +419,22 @@ class StudentController extends Controller
     //texting  message sending...
     public function saveText(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'state' => 'required',
-            'class_apply' => 'required',
-            'message' => 'required',
-            'email_address' => 'required',
-        ]);
+        //dd($request->all());
+
+        //dd($values);
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'message' => 'required',
+                'email_address' => 'required',
+                'class' => 'required',
+            ],
+            [
+                'message.required' => 'Message Required',
+                'email_address.required' => 'Email Required',
+                'class.required' => 'Class Required',
+            ]
+        );
         if ($validator->fails()) {
             return response()->json([
                 $errors = $validator->errors(),
@@ -430,9 +442,147 @@ class StudentController extends Controller
                 'errors' => $errors,
             ]);
         } else {
+            /* Generate unique transaction ID for each cash request record */
+            $permitted_chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            $tid = substr(str_shuffle($permitted_chars), 0, 16);
+            // dd($request,$request->get('state'));
+            $fff = (object)$request->all('data');
+
+            // state split value and save independently
+            $values = explode(",", $request->state);
+            $state_inserts = [];
+            foreach ($values as $bid) {
+                $state_inserts[] =
+                    [
+                        'state_details' => $bid,
+                        'status' => 'Active',
+                        'tran_code' => $tid,
+                        'message_details' => $request->message,
+                        'email' => $request->email_address,
+                        'reg_date' => date('d/m/Y H:i:s'),
+                    ];
+            }
+            // save all the operation here
+            DB::table('test_saves')->insert($state_inserts);
+
+            // class split value and save independently
+            $value_class = explode(",", $request->class);
+            $insert_class = [];
+            foreach ($value_class as $bid_class) {
+                $insert_class[] =
+                    [
+                        'class_details' => $bid_class,
+                        'status' => 'Active',
+                        'tran_code' => $tid,
+                        'message_details' => $request->message,
+                        'email' => $request->email_address,
+                        'reg_date' => date('d/m/Y H:i:s'),
+                    ];
+            }
+            DB::table('test_saves')->insert($insert_class);
+
+            // this will save in single colum in the database.
+            $data = new TestSave();
+            $data->class_details = $request->class;
+            $data->state_details = $request->state;
+            $data->message_details = $request->message;
+            $data->status = "Pending";
+            $data->tran_code = $tid;
+            $data->email = $request->email_address;
+            $data->reg_date = date('d/m/Y H:i:s');
+            $data->save();
+
+            // history record here...
+            $logs = new Activitity_log();
+            $logs->m_action = "Test multiple saving added";
+            $logs->m_status = "Successful";
+            $logs->m_date = date('d/m/Y H:i:s');
+            $logs->m_ip = request()->ip;
+            $logs->save();
+            if ($data->save()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Save successfully',
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 403,
+                    'message' => 'Error occurred! Try again',
+                ]);
+            }
+        }
+    }
+    // fetch state and class here...
+    public function fetchState()
+    {
+
+        $allState = TestSave::where('status', 'Active')->get();
+        $allClass = TestSave::where('status', 'Active')->get();
+
+        // fetch state details here to show in front end
+        // $state_all = DB::table('test_saves')
+        //     ->selectRaw('id, state_details')
+        //     ->where('status', '=', 'Active')
+        //     ->where('state_details', '!=', '')
+        //     ->get();
+        // // fetch class details here to show in front end
+        // $allClass = DB::table('test_saves')
+        //     ->selectRaw('id, class_details')
+        //     ->where('status', '=', 'Active')
+        //     ->where('class_details', '!=', '')
+        //     ->get();
+        return response()->json([
+            'status' => 200,
+            'allsDetails' => [
+                'all_state' => $allState,
+                'all_class' => $allClass,
+            ]
+
+        ]);
+    }
+
+    public function fetchAllState()
+    {
+        $allStates = TestSave::where('status', 'Active')->get();
+        $grade = DB::table('test_saves')
+            ->selectRaw('id,state_details')
+            ->where('status', '=', 'Active')
+            ->get();
+        //$allClass = TestSave::where('status', 'Active')->get();
+        $mystate = $grade;
+
+        $values = explode(",", $mystate);
+
+        return response()->json([
+            'status' => 200,
+            'all_state' => $values,
+
+        ]);
+    }
+
+
+    private function array_map_assoc($array)
+    {
+        $r = array();
+        foreach ($array as $key => $value)
+            $r[$key] = "$value";
+        return $r;
+    }
+
+    // fetch class here....
+    public function fetchClass()
+    {
+        if (auth('sanctum')->check()) {
+            $allclass = ClassModel::where('status', 'Active')->get();
+
             return response()->json([
                 'status' => 200,
-                'message' => 'Save successfully',
+                'all_classes' => $allclass
+            ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Login to continue',
             ]);
         }
     }
