@@ -23,5 +23,13 @@ class Activitity_log extends Model
         'm_ip',
         'm_city',
         'm_record_id',
+        'm_currence',
+        'm_country_name',
+        'm_country_code',
+        'm_platform',
+        'm_deivce_type',
+        'm_latitude',
+        'm_longitude',
+
     ];
 }

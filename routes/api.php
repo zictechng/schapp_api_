@@ -22,6 +22,7 @@ use App\Http\Controllers\API\SubjectController;
 use App\Http\Controllers\API\TermController;
 use App\Http\Controllers\API\TestRecordController;
 use App\Http\Controllers\API\UploadFilesController;
+use App\Models\SystemSetup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -59,8 +60,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('update_class', [ClassController::class, 'saveUpdateClass']);
     Route::post('save_academic', [AcademicSessionController::class, 'saveAcademic']);
     Route::get('fetch_subject', [SubjectController::class, 'fetchSubject']);
+    Route::get('get_all_subject', [SubjectController::class, 'getAllSubject']);
     Route::get('get_subject/{id}', [SubjectController::class, 'getSubject']);
     Route::get('get_class/{id}', [ClassController::class, 'getClass']);
+
 
     Route::get('fetch_academic_session', [AcademicSessionController::class, 'fetch_session']);
     Route::get('get_academic_session/{id}', [AcademicSessionController::class, 'get_session']);
@@ -96,12 +99,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('fetch_all_open', [DaysSchoolopenController::class, 'fetchCategory']);
 
     Route::post('save_session', [CurrentSessionController::class, 'saveCurrent_Session']);
-    Route::get('fetch_all', [CurrentSessionController::class, 'fetchAll']);
+    Route::get('fetch_all_session', [CurrentSessionController::class, 'fetchAll']);
     Route::get('getsession/{id}', [CurrentSessionController::class, 'getSession']);
     Route::post('update_current_session', [CurrentSessionController::class, 'updateCurrentSession']);
     Route::delete('delete_session/{id}', [CurrentSessionController::class, 'deleteSession']);
 
     Route::get('fetch_all_student', [StudentController::class, 'getAllStudent']);
+    Route::get('fetch_all_student_result', [StudentController::class, 'getResultStudent']);
     Route::get('fetch_all_details', [StudentController::class, 'getAllDetails']);
     Route::get('fetch_all_class', [StudentController::class, 'getClassDetails']);
     Route::get('fetch_all_category', [StudentController::class, 'getCategoryDetails']);
@@ -111,6 +115,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('delete_student/{id}', [StudentController::class, 'deleteStudent']);
     Route::post('update_user_image/{id}', [StudentController::class, 'updateProfileImage']);
     Route::post('textSave', [StudentController::class, 'saveText']);
+    Route::post('update_student_password', [StudentController::class, 'updateStudentPassword']);
 
 
 
@@ -129,6 +134,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('update_admin_user/{id}', [AdminUserController::class, 'updateAdmin']);
     Route::post('update_password/{id}', [AdminUserController::class, 'updateAdminPassword']);
     Route::delete('delete_admin/{id}', [AdminUserController::class, 'deleteAdmin']);
+    Route::get('fetch_birthday_list', [StudentController::class, 'getBirthdayList']);
 
     Route::get('fetch_result', [ResultController::class, 'getAllResult']);
     Route::post('result_process_start', [ResultController::class, 'resultProcessStart']);
@@ -146,6 +152,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('view_result_subject', [ResultController::class, 'viewSubjectResult']);
     Route::get('load_view_subject/{id}', [ResultController::class, 'loadSubjectView']);
     Route::get('get_subject_id/{id}', [ResultController::class, 'getSubjectID']);
+    Route::post('fetch_all_student_name', [StudentController::class, 'getStudentName']);
     // CA route here...
     Route::get('fetch_ca_result', [CAResultController::class, 'getAllCA']);
     Route::post('result_process_ca', [CAResultController::class, 'processAllCA']);
@@ -287,6 +294,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('check_user_logged/{id}', [AuthController::class, 'fetchUserLogged']);
     Route::get('authenticate_user/{id}', [AuthController::class, 'authenticateUser']);
 
+    // setting route goes here...
+    Route::post('save_setting_details', [StaffController::class, 'settingDetails']);
+    Route::get('fetch_setting_details', [StaffController::class, 'fetchAllSetting']);
+    Route::post('upload_sch_logo', [StaffController::class, 'uploadSchoolLogo']);
+    Route::post('upload_sch_banner', [StaffController::class, 'uploadSchoolBanner']);
     // fetch dashboard activities here
     Route::get('fetch_dash1', [AuthController::class, 'getDash1']);
     Route::get('fetch_dash2', [AuthController::class, 'getDash2']);
@@ -313,6 +325,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('my_single_ca_save', [StaffController::class, 'saveMySingleCA']);
     Route::post('post_assignment', [StaffController::class, 'saveAssignment']);
     Route::get('fetch_myassignment', [StaffController::class, 'fetchMyPostedAssignment']);
+    Route::get('fetch_submission_assignment', [StaffController::class, 'fetchSubmissionAssignment']);
     Route::delete('delete_assign/{id}', [StaffController::class, 'deleteAssign']);
     Route::get('get_assignment_id/{id}', [StaffController::class, 'getAssignmentID']);
     Route::get('fetch_edit_assign/{id}', [StaffController::class, 'fetchEditAssignment']);
@@ -325,17 +338,33 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('fetch_mynotification', [StaffController::class, 'myNotification']);
     Route::post('send_message', [StaffController::class, 'sendNotification']);
     Route::get('get_readmessage_id/{id}', [StaffController::class, 'getReadMessage']);
+    Route::post('send_assignment_remark', [StaffController::class, 'sendAssignmentRemark']);
+    Route::post('fetch_student_result', [StaffController::class, 'fetchStudentResult']);
+    Route::get('fetch_view_result/{id}', [StaffController::class, 'fetchViewResult']);
+
+    // STUDENT DASHBOARD / PORTAL ROUTES HERE...
+    Route::get('fetch_student_profile', [StudentController::class, 'fetchStudentProfile']);
+    Route::get('fetch_my_log', [StudentController::class, 'fetchMyLog']);
+    Route::post('save_password_update', [StudentController::class, 'updateMyPassword']);
+    Route::get('my_notification', [StudentController::class, 'myAllNotification']);
+    Route::get('my_assignment', [StudentController::class, 'myAssignment']);
+    Route::post('submit_assignment', [StudentController::class, 'submitAssignment']);
+    Route::get('get_messages_id/{id}', [StudentController::class, 'getAssignmentToReply']);
+    Route::post('check_result', [StudentController::class, 'resultChecker']);
+    Route::post('check_ca_result', [StudentController::class, 'resultCAChecker']);
+    Route::get('system_setting', [StudentController::class, 'systemSetting']);
 });
 
-
-
 Route::get('fetch_state', [StudentController::class, 'fetchState']);
+Route::get('fetch_ip', [StudentController::class, 'fetchIP']);
+Route::get('fetch_allip', [StudentController::class, 'fetchALLIP']);
 Route::get('fetch_states', [StudentController::class, 'fetchAllState']);
 
 Route::get('text_sum', [ResultController::class, 'textSum']);
 
 Route::post('register', [AuthController::class, 'registerUser']);
 Route::post('login', [AuthController::class, 'loginUser']);
+Route::post('student_login', [AuthController::class, 'loginStudent']);
 
 Route::get('send_process', [AuthController::class, 'saveProcessResult']);
 

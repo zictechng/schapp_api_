@@ -16,6 +16,7 @@ class Student extends Model
         'dob',
         'st_age',
         'state',
+        'st_password',
         'lga',
         'country',
         'last_sch_attend',
@@ -40,16 +41,20 @@ class Student extends Model
         'acct_action',
     ];
 
-    protected $with = ['class_name', 'session_year', 'sch_category'];  // this will pass it to javascript, jquery or any other programming platform outside laravel
+    protected $with = ['class_name', 'student_name', 'session_year', 'sch_category'];  // this will pass it to javascript, jquery or any other programming platform outside laravel
     public function class_name()
     {
         return $this->belongsTo(ClassModel::class, 'class_apply', 'id'); // this is for normal laravel format
     }
-
+    public function student_name()
+    {
+        return $this->belongsTo(Student::class, 'student_id', 'id'); // this is for normal laravel format
+    }
     public function session_year()
     {
         return $this->belongsTo(AcademicSession::class, 'academic_year', 'id'); // this is for normal laravel format
     }
+
     public function sch_category()
     {
         return $this->belongsTo(SchoolCategory::class, 'school_category', 'id'); // this is for normal laravel format

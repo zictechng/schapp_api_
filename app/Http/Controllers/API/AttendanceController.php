@@ -21,29 +21,35 @@ class AttendanceController extends Controller
     public function getAttendance()
     {
         if (auth('sanctum')->check()) {
-            $fetch_attendance = DB::table('attendances')
-                ->selectRaw('id, atten_class, atten_year,
-            atten_term,  atten_mark_date , atten_status, atten_addeby, atten_class_name,
-            atten_year_name, atten_term_name, atten_tid, atten_date')
+            // $fetch_attendance = DB::table('attendances')
+            //     ->selectRaw('id, atten_class, atten_year,
+            // atten_term,  atten_mark_date , atten_status, atten_addeby, atten_class_name,
+            // atten_year_name, atten_term_name, atten_tid, atten_date')
+            //     ->where('atten_status', '=', 'Active')
+            //     ->groupBy('atten_tid')
+            //     ->get();
+            $fetch_attendance = Attendance::query()
                 ->where('atten_status', '=', 'Active')
                 ->groupBy('atten_tid')
-                ->get();
-            // $fetch_attendance = Attendance::where('atten_status', '!=', 'Deleted')
-            //     ->orderBy('atten_date', 'desc')
-            //     ->get();
-            if (!empty($fetch_attendance)) {
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($fetch_attendance) {
                 return response()->json([
                     'status' => 200,
                     'attan_Details' => [
                         'attendance_Details' => $fetch_attendance,
                     ]
                 ]);
-            } else {
+            } else if (empty($fetch_attendance)) {
                 return response()->json([
                     'status' => 404,
-                    'message' => "No record found at the moment",
+                    'message' => 'No record at the moment'
                 ]);
             }
+            // $fetch_attendance = Attendance::where('atten_status', '!=', 'Deleted')
+            //     ->orderBy('atten_date', 'desc')
+            //     ->get();
+
         } else {
             return response()->json([
                 'status' => 401,

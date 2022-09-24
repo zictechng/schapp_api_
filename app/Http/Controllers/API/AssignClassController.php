@@ -25,7 +25,7 @@ class AssignClassController extends Controller
             ,cls__teacher_name, cls__class_name, cls__status, cls__tid,cls__addby,cls__date')
                 ->orderBy('id', 'desc')
                 ->groupBy('cls_teacher_id')
-                ->get();
+                ->paginate(15);
             if (!empty($get_classAll)) {
                 return response()->json([
                     'status' => 200,

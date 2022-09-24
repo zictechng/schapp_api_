@@ -77,11 +77,22 @@ class AcademicSessionController extends Controller
         if (auth('sanctum')->check()) {
 
             $user_details = auth('sanctum')->user();
-            $allsession_details = AcademicSession::where('a_status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'session_record' => $allsession_details,
-            ]);
+            // $allsession_details = AcademicSession::where('a_status', 'Active')->orderByDesc('id')->get();
+            $allsession_details = AcademicSession::query()
+                ->where('a_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($allsession_details) {
+                return response()->json([
+                    'status' => 200,
+                    'session_record' => $allsession_details,
+                ]);
+            } else if (empty($allsession_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,

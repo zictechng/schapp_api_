@@ -11,16 +11,22 @@ use App\Models\Assignment;
 use App\Models\Attendance;
 use App\Models\CAResultProcessStart;
 use App\Models\ClassModel;
+use App\Models\DaysSchoolOpen;
 use App\Models\MessageSystem;
 use App\Models\PsychomotoDomian;
 use App\Models\ResultCA;
 use App\Models\ResultProcessStart;
 use App\Models\ResultTable;
 use App\Models\SchoolCategory;
+use App\Models\SchoolResumption;
 use App\Models\Staff;
 use App\Models\StartPsychomotoDomain;
 use App\Models\Student;
+use App\Models\StudentComment;
+use App\Models\StudentPosition;
 use App\Models\Subject;
+use App\Models\SubmitAssignment;
+use App\Models\SystemSetup;
 use App\Models\TermModel;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -145,11 +151,22 @@ class StaffController extends Controller
     public function getStaff()
     {
         if (auth('sanctum')->check()) {
-            $allstaff = Staff::where('acct_status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'all_staff' => $allstaff
-            ]);
+            //$allstaff = Staff::where('acct_status', 'Active')->orderByDesc('id')->get();
+            $allstaff = Staff::query()
+                ->where('acct_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($allstaff) {
+                return response()->json([
+                    'status' => 200,
+                    'all_staff' => $allstaff
+                ]);
+            } else if (empty($allstaff)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No staff record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,
@@ -475,7 +492,7 @@ class StaffController extends Controller
 
         $all_log = Activitity_log::query()
             ->orderByDesc('id')
-            ->paginate('5');
+            ->paginate('15');
         return response()->json([
             'status' => 200,
             'all_details' => $all_log
@@ -485,87 +502,104 @@ class StaffController extends Controller
     // get student details assigned to staff/teacher here...
     public function getStaffStudent()
     {
-        $userDetails = auth('sanctum')->user();
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
 
-        // get logged staff details here
-        $get_staff = DB::table('staff')
-            ->selectRaw('*')
-            ->where('id', $userDetails->staff_id)
-            ->first();
+            // get logged staff details here
+            $get_staff = DB::table('staff')
+                ->selectRaw('*')
+                ->where('id', $userDetails->staff_id)
+                ->first();
 
-        $get_myStudentTotal = DB::table('students')
-            ->selectRaw('count(id) as all_student')
-            ->where('class_apply', $get_staff->class)
-            ->first();
+            $get_myStudentTotal = DB::table('students')
+                ->selectRaw('count(id) as all_student')
+                ->where('class_apply', $get_staff->class)
+                ->first();
 
-        $get_myStudentGraduated = DB::table('students')
-            ->selectRaw('count(id) as graduated_total')
-            ->where('acct_status', 'Graduated')
-            ->where('class_apply', $get_staff->class)
-            ->first();
+            $get_myStudentGraduated = DB::table('students')
+                ->selectRaw('count(id) as graduated_total')
+                ->where('acct_status', 'Graduated')
+                ->where('class_apply', $get_staff->class)
+                ->first();
 
 
-        return response()->json([
-            'status' => 200,
-            'all_details' => [
-                'student_total' => $get_myStudentTotal,
-                'graduate_student' => $get_myStudentGraduated,
+            return response()->json([
+                'status' => 200,
+                'all_details' => [
+                    'student_total' => $get_myStudentTotal,
+                    'graduate_student' => $get_myStudentGraduated,
 
-            ]
-        ]);
+                ]
+            ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
     }
 
     // staff dashboard details fetch here...
     public function fetchDashDetails()
     {
-        $userDetails = auth('sanctum')->user();
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
+            $today = now();
+            // get logged staff details here
+            $get_Staff_info = DB::table('staff')
+                ->selectRaw('*')
+                ->where('id', $userDetails->staff_id)
+                ->first();
 
-        // get logged staff details here
-        $get_Staff_info = DB::table('staff')
-            ->selectRaw('*')
-            ->where('id', $userDetails->staff_id)
-            ->first();
+            $get_myAssignment = DB::table('assignments')
+                ->selectRaw('count(id) as all_assign')
+                ->where('assign_class_id', $get_Staff_info->class)
+                ->first();
 
-        $get_myAssignment = DB::table('assignments')
-            ->selectRaw('count(id) as all_assign')
-            ->where('assign_class_id', $get_Staff_info->class)
-            ->first();
+            $get_AssignmentHome = DB::table('assignments')
+                ->selectRaw('count(id) as all_assign_home')
+                ->where('assign_class_id', $get_Staff_info->class)
+                ->where('assign_type', 'Home Work')
+                ->first();
 
-        $get_AssignmentHome = DB::table('assignments')
-            ->selectRaw('count(id) as all_assign_home')
-            ->where('assign_class_id', $get_Staff_info->class)
-            ->where('assign_type', 'Home Work')
-            ->first();
+            $ldate = date('Y-m-d');
+            $get_myStudentBirthday = DB::table('students')
+                ->selectRaw('count(id) as birth_total')
+                ->whereMonth('dob', $today->month)
+                ->whereDay('dob', $today->day)
+                ->where('class_apply', $get_Staff_info->class)
+                ->where('acct_status', 'Active')
+                ->first();
 
-        $ldate = date('Y-m-d');
-        $get_myStudentBirthday = DB::table('students')
-            ->selectRaw('count(id) as birth_total')
-            ->where('dob', '=', $ldate)
-            ->where('class_apply', $get_Staff_info->class)
-            ->first();
+            //message fetch here...
+            $get_myMessage = DB::table('message_systems')
+                ->selectRaw('count(id) as total_message')
+                ->where('mes_status', 'Active')
+                ->where('receiver_user_id', $get_Staff_info->id)
+                ->first();
 
-        //message fetch here...
-        $get_myMessage = DB::table('message_systems')
-            ->selectRaw('count(id) as total_message')
-            ->where('mes_status', 'Active')
-            ->where('receiver_user_id', $get_Staff_info->id)
-            ->first();
-
-        //latest activities fetch here...
-        // $get_myActivity = DB::table('activitity_logs')
-        //     ->selectRaw('*')
-        //     ->where()
-        //     ->get();
-        return response()->json([
-            'status' => 200,
-            'all_details' => [
-                'assignment' => $get_myAssignment,
-                'assignment_home' => $get_AssignmentHome,
-                'mystudentBirth' => $get_myStudentBirthday,
-                'myMessage' => $get_myMessage,
-            ]
-        ]);
+            //latest activities fetch here...
+            // $get_myActivity = DB::table('activitity_logs')
+            //     ->selectRaw('*')
+            //     ->where()
+            //     ->get();
+            return response()->json([
+                'status' => 200,
+                'all_details' => [
+                    'assignment' => $get_myAssignment,
+                    'assignment_home' => $get_AssignmentHome,
+                    'mystudentBirth' => $get_myStudentBirthday,
+                    'myMessage' => $get_myMessage,
+                ]
+            ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
     }
+
 
     // fetch staff/teacher log activities here...
     public function fetchLogDetails()
@@ -1650,6 +1684,7 @@ class StaffController extends Controller
             $sbujectName = Subject::where('id', $request->subject)->first();
 
             //$uploade_path = $path;
+            $file_size = 0;
             $data = new Assignment();
             $data->assign_title = $request['title'];
             $data->assign_body = $request['message_body'];
@@ -1658,10 +1693,23 @@ class StaffController extends Controller
 
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
+                $file_size += $file->getSize();
+
+                $file_size = number_format($file_size / 2048576, 2);
+                //print_r($file_size.' MB');	
+                //dd($file_size);
+                if ($file_size > 2045) {
+                    return response()->json([
+                        'status' => 405,
+                        'message' => 'File too large!',
+                    ]);
+                }
+
+                $file = $request->file('image');
                 $extension = $file->getClientOriginalExtension();
                 $filename = time() . '.' . $extension;
                 $file->move('uploads/assignment_folder/', $filename);
-                $data->assign_file = 'uploads/assignment_folder/' . $filename;
+                $data->assign_file = 'http://localhost:8000/uploads/assignment_folder/' . $filename;
             }
             $data->assign_type = $request['assignment_type'];
             $data->assign_status = "Active";
@@ -1739,6 +1787,110 @@ class StaffController extends Controller
         }
     }
 
+    // fetch student assignment submission details here...
+    public function fetchSubmissionAssignment()
+    {
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
+
+
+            $all_assign_details = SubmitAssignment::query()
+                ->where('assign_status', '!=', 'Deleted')
+                ->Where('assign_status', '!=', 'Successful')
+                ->Where('assign_status', '!=', 'Reject')
+                ->where('teacher_id',  $userDetails->staff_id)
+                ->orderByDesc('id')
+                ->paginate('15');
+
+            if ($all_assign_details) {
+                return response()->json([
+                    'status' => 200,
+                    'allPostResult' => $all_assign_details,
+                ]);
+            } else if (empty($all_assign_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record fund',
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 405,
+                    'message' => 'Server error occurred',
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+    // submit assignment remark here...
+    public function sendAssignmentRemark(Request $request)
+    {
+        $permitted_chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $tid = substr(str_shuffle($permitted_chars), 0, 16);
+        //dd($request->all());
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
+            $validator = Validator::make($request->all(), [
+                'submission_status' => 'required|max:191',
+                'message_body' => 'required|max:255',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    $errors = $validator->errors(),
+                    'status' => 422,
+                    'errors' => $errors,
+                ]);
+            } else {
+                $assignmentID = SubmitAssignment::where('id', $request->record_id)->first();
+                $userEmail = Student::where('id', $assignmentID->student_id)->first();
+                if (!empty($assignmentID)) {
+                    $assignmentID->update([
+                        'assign_remark' => $request->message_body,
+                        'assign_scores' => $request->score,
+                        'assign_status' => $request->submission_status,
+                        'assign_updated_date' => date('d/m/Y H:i:s'),
+                    ]);
+
+                    $save_message = new MessageSystem();
+                    $save_message->sender_user_id = $userDetails->id;
+                    $save_message->receiver_user_id = $assignmentID->student_id;
+                    $save_message->mes_nature = "Assignment Remark";
+                    $save_message->mes_title = "Assignment Remark";
+                    $save_message->mes_body = $request['message_body'];
+                    $save_message->mes_sender_name = $userDetails->name;
+                    $save_message->mes_receiver_email = $userEmail->guardia_email;
+                    $save_message->mes_status = "Active";
+                    $save_message->mes_receiver_status = "New";
+                    $save_message->mes_send_date = date('d/m/Y H:i:s');
+                    $save_message->mes_tid = $tid;
+
+                    $save_message->save();
+                    return response()->json([
+                        'status' => 200,
+                        'message' => 'Remark Posted Successfully',
+                    ]);
+                } else if (empty($assignmentID)) {
+                }
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_action = "Mark Assignment";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, Added assignment remark details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
     // delete post assignment here...
     public function deleteAssign($id)
     {
@@ -2321,6 +2473,579 @@ class StaffController extends Controller
                 return response()->json([
                     'status' => 404,
                     'message' => 'Error while fetching message...',
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // fetch student result details to view by teacher
+    public function fetchStudentResult(Request $request)
+    {
+        if (auth('sanctum')->check()) {
+
+            $request->validate([
+                'school_year' => 'required',
+                'school_term' => 'required',
+                'school_class' => 'required',
+            ], [
+                'school_year.required' => 'Academic Year is required',
+                'school_term.required' => 'Academic Term is required',
+                'school_class.required' => 'Class is required',
+            ]);
+
+            // here start to check / process the user result details
+            $checkResult = ResultTable::where('academic_year', $request->school_year)
+                ->where('academy_term', $request->school_term)
+                ->where('class', $request->school_class)
+                ->where('result_status', 'Active')
+                ->first();
+
+            if (empty($checkResult)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No result record found",
+                ]);
+            } else if (!empty($checkResult)) {
+                // get the interpretation name here...
+                $resultClassName = ClassModel::where('id', $request->school_class)->first();
+                $resultYearName = AcademicSession::where('id', $request->school_year)->first();
+                $resultTermName = TermModel::where('id', $request->school_term)->first();
+
+                $fetchResult = ResultTable::where('academic_year', $request->school_year)
+                    ->where('academy_term', $request->school_term)
+                    ->where('class', $request->school_class)
+                    ->where('result_status', 'Active')
+                    ->groupBy('admin_number')
+                    ->get();
+
+
+                $grades = DB::table('result_tables')
+                    ->selectRaw('sum(total_scores) as exam_total, sum(tca_score) as ca_total, sum(exam_scores) as user_exam_total, id, tca_score, total_scores, exam_scores,
+                     admin_number,student_name, academic_year, academy_term, class,
+                     school_category, username, result_status, tid_code')
+                    ->where('academic_year', '=', $request->school_year)
+                    ->where('academy_term', '=', $request->school_term)
+                    ->where('class', '=', $request->school_class)
+                    ->groupBy('admin_number')
+                    ->orderBy('exam_total', 'desc')
+                    ->get();
+                if ($grades) {
+                    return response()->json([
+                        'status' => 200,
+                        'allDetails' => [
+                            'student_resultDetails' => $grades,
+                            'classDetails' => $resultClassName,
+                            'termDetails' => $resultTermName,
+                            'yearDetails' => $resultYearName,
+                        ]
+                    ]);
+                } else {
+                    return response()->json([
+                        'status' => 403,
+                        'message' => 'Something went wrong, try again',
+                    ]);
+                }
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+    // fetch student result details to view complete result here...
+    public function fetchViewResult($id)
+    {
+        $userDetails = auth('sanctum')->user();
+        //dd($request->all());
+
+        if (auth('sanctum')->check()) {
+            $checkResult = ResultTable::where('id', $id)
+                ->first();
+
+            // get the interpretation name here...
+            $resultClassName = ClassModel::where('id', $checkResult->class)->first();
+            $resultYearName = AcademicSession::where('id', $checkResult->academic_year)->first();
+            $resultTermName = TermModel::where('id', $checkResult->academy_term)->first();
+
+            // get student details here...
+            $studentDetails = Student::where('st_admin_number', $checkResult->admin_number)
+                ->where('acct_status', 'Active')
+                ->first();
+            // $year = $request->school_year;
+            // $class = $request->class;
+            // $term = $request->school_term;
+
+            if (empty($checkResult)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Sorry, No result found',
+                ]);
+            } else if (!empty($checkResult)) {
+                $fetchResult = ResultTable::where('academic_year', $checkResult->academic_year)
+                    ->where('academy_term', $checkResult->academy_term)
+                    ->where('class', $checkResult->class)
+                    ->where('admin_number', $studentDetails->st_admin_number)
+                    ->where('result_status', 'Active')
+                    ->get();
+                // count the number of subject offered by the user here...
+                $subjectCount = DB::table('result_tables')
+                    ->selectRaw('count(subject) as total_subject,
+                 admin_number,academic_year, academy_term, class,
+                result_status')
+                    ->where('academic_year', $checkResult->academic_year)
+                    ->where('academy_term', $checkResult->academy_term)
+                    ->where('class', $checkResult->class)
+                    ->where('admin_number', $studentDetails->st_admin_number)
+                    ->first();
+                // get total sum of all subjects offered by the user here...
+                $grandScore = DB::table('result_tables')
+                    ->selectRaw('sum(total_scores) as user_total, total_scores,
+                 admin_number,student_name, academic_year, academy_term, class,
+                  result_status')
+                    ->where('academic_year', $checkResult->academic_year)
+                    ->where('academy_term', $checkResult->academy_term)
+                    ->where('class', $checkResult->class)
+                    ->where('admin_number', $studentDetails->st_admin_number)
+                    ->where('result_status', 'Active')
+                    ->first();
+                // get the user class position here...
+                $classPosition = StudentPosition::where('sch_year', $checkResult->academic_year)
+                    ->where('sch_term', $checkResult->academy_term)
+                    ->where('sch_class', $checkResult->class)
+                    ->where('stu_admin_number', $studentDetails->st_admin_number)
+                    ->where('p_status', 'Active')
+                    ->where('stu_admin_number', '!=', null)
+                    ->first();
+                if (!empty($classPosition)) {
+                    if ($classPosition->position == 1 || $classPosition->position == 21 || $classPosition->position == 31 || $classPosition->position == 41 || $classPosition->position == 51) {
+                        $myposition = $classPosition->position . 'st';
+                    } else if ($classPosition->position == 2 || $classPosition->position == 22 || $classPosition->position == 32 || $classPosition->position == 42 || $classPosition->position == 52) {
+                        $myposition = $classPosition->position . 'nd';
+                    } else if ($classPosition->position == 23 || $classPosition->position == 3 || $classPosition->position == 33 || $classPosition->position == 43 || $classPosition->position == 53) {
+                        $myposition = $classPosition->position . 'rd';
+                    } else {
+                        $myposition = $classPosition->position . 'th';
+                    }
+                } else {
+                    $myposition = "";
+                }
+                // get school opening and closing date here ...
+                $school_start = SchoolResumption::where('school_year', $checkResult->academic_year)
+                    ->where('school_term', $checkResult->academy_term)
+                    ->where('status', 'Active')
+                    ->first();
+                if (!empty($school_start)) {
+                    $schStart = $school_start;
+                } else {
+                    $schStart = '';
+                }
+
+                // get number of days school opened here ...
+                $school_open = DaysSchoolOpen::where('open_year', $checkResult->academic_year)
+                    ->where('open_term', $checkResult->academy_term)
+                    ->where('open_status', 'Active')
+                    ->first();
+                if (!empty($school_open)) {
+                    $openingSchool = $school_open;
+                } else {
+                    $openingSchool = '';
+                }
+                // get attendance of the student here ...
+                $attendance_count = Attendance::where('atten_year', $checkResult->academic_year)
+                    ->where('atten_term', $checkResult->academy_term)
+                    ->where('atten_class', $checkResult->class)
+                    ->where('atten_admin_no', $studentDetails->st_admin_number)
+                    ->where('atten_status', 'Active')
+                    ->get();
+                if (!empty($attendance_count)) {
+
+                    $myAttendance = count($attendance_count);
+                } else {
+                    $myAttendance = '';
+                }
+                // class average here...
+                $student_count = Student::where('class_apply', $checkResult->class)
+                    ->where('acct_status', 'Active')
+                    ->get();
+                if (!empty($student_count)) {
+
+                    $totalStudent_inClass = count($student_count);
+                    $average =  ($grandScore->user_total / $totalStudent_inClass);
+                } else {
+                    $average = '';
+                }
+                // student average in exam here...
+                $student_subject = ResultTable::where('academic_year', $checkResult->academic_year)
+                    ->where('academy_term', $checkResult->academy_term)
+                    ->where('admin_number', $studentDetails->st_admin_number)
+                    ->where('result_status', 'Active')
+                    ->groupBy('subject')
+                    ->get();
+                if (!empty($student_subject)) {
+
+                    $my_total_subject = count($student_subject);
+                    //$average =  ($grandScore->user_total / $totalStudent_inClass);
+                } else {
+                    $my_total_subject = '';
+                }
+                // get teacher comment here ...
+                $teacherComment = StudentComment::where('comm_year', $resultYearName->academic_name)
+                    ->where('comm_term', $resultTermName->term_name)
+                    ->where('comm_class', $resultClassName->class_name)
+                    ->where('comm_stu_number', $studentDetails->st_admin_number)
+                    ->where('comm_status', 'Active')
+                    ->where('comm_teacher', '!=', '')
+                    ->first();
+
+                // get principle comment here ...
+                $principleComment = StudentComment::where('comm_year', $resultYearName->academic_name)
+                    ->where('comm_term', $resultTermName->term_name)
+                    ->where('comm_class', $resultClassName->class_name)
+                    ->where('comm_stu_number', $studentDetails->st_admin_number)
+                    ->where('comm_status', 'Active')
+                    ->where('comm_prin_comment', '!=', '')
+                    ->first();
+
+                // get student psychomotor domain details here...
+                $psychomotorDomain = PsychomotoDomian::where('aff_year', $checkResult->academic_year)
+                    ->where('aff_term', $checkResult->academy_term)
+                    ->where('aff_class', $checkResult->class)
+                    ->where('aff_admin_number', $studentDetails->st_admin_number)
+                    ->where('aff_status', 'Active')
+                    ->first();
+
+                // $count_student = ResultTable::where('tid_code', $recordID)->count('id');
+                return response()->json([
+                    'status' => 200,
+                    'result_info' => [
+                        'resultDetails' => $fetchResult,
+                        'classDetails' => $checkResult->class,
+                        'studentDetail' => $studentDetails,
+                        'term' => $resultTermName,
+                        'year' => $resultYearName,
+                        'class' => $resultClassName,
+                        'subject_offer' => $subjectCount,
+                        'grand_score' => $grandScore,
+                        'class_position' => $myposition,
+                        'comment_teacher' => $teacherComment,
+                        'comment_prin' => $principleComment,
+                        'psychomotor' => $psychomotorDomain,
+                        'sch_open' => $openingSchool,
+                        'sch_start' => $schStart,
+                        'attendance_count' => $myAttendance,
+                        'classAverage' => $totalStudent_inClass,
+                        'subject_total' => $my_total_subject,
+                    ]
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // save system setup here...
+    public function settingDetails(Request $request)
+    {
+        if (auth('sanctum')->check()) {
+            $userDetails = auth('sanctum')->user();
+
+            $request->validate([
+                'sch_name' => 'required',
+                'sch_name_short' => 'required',
+                'sch_phone' => 'required',
+            ], [
+                'sch_name.required' => 'School Name is required',
+                'sch_name_short.required' => 'School Short Name is required',
+                'sch_phone.required' => 'School Phone Number required',
+            ]);
+
+            // check if information in the database before you insert
+            $checkSetting  = SystemSetup::where('id', '!=', null)->first();
+            if (empty($checkSetting)) {
+                $save_setting = new SystemSetup();
+                $save_setting->sch_name =  $request->sch_name;
+                $save_setting->sch_name_short = $request->sch_name_short;
+                $save_setting->sch_phone = $request->sch_phone;
+                $save_setting->sch_email = $request->sch_email;
+                $save_setting->add_date = date('d/m/Y H:i:s');
+                $save_setting->addby = $userDetails->username;
+                $save_setting->app_status = "Active";
+                $save_setting->save();
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_action = "Save system setting";
+                $logs->m_status = "Successful";
+                $logs->m_details = $userDetails->name . ", Save new system details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+                return response()->json([
+                    'status' => 200,
+                    'message' => "Setting save successfully",
+                ]);
+            } else if (!empty($checkSetting)) {
+                $checkSetting->sch_name = $request->sch_name;
+                $checkSetting->sch_name_short = $request->sch_name_short;
+                $checkSetting->sch_phone = $request->sch_phone;
+                $checkSetting->sch_email = $request->sch_email;
+                $checkSetting->add_date = date('d/m/Y H:i:s');
+                $checkSetting->addby = $userDetails->username;
+                $checkSetting->app_status = "Active";
+
+                $checkSetting->update();
+                return response()->json([
+                    'status' => 200,
+                    'message' => "Setting updated successfully",
+                ]);
+                $logs = new Activitity_log();
+                $logs->m_action = "Update system setting";
+                $logs->m_status = "Successful";
+                $logs->m_details = $userDetails->name . ", Update new system details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+            }
+            //dd($request->all());
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // fetch setting details here...
+    public function fetchAllSetting()
+    {
+        if (auth('sanctum')->check()) {
+
+            $user_details = auth('sanctum')->user();
+            // $fetch_details = SystemSetup::all()->first();
+            $fetch_details = SystemSetup::where('app_status', 'Active')->first();
+
+            if (!empty($fetch_details)) {
+                return response()->json([
+                    'status' => 200,
+                    'setting_record' => $fetch_details,
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found",
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Login to continue',
+            ]);
+        }
+    }
+
+    // upload school logo here ...
+
+    public function uploadSchoolLogo(Request $request)
+    {
+        if (auth('sanctum')->check()) {
+            $file_size = 0;
+            //dd($request->all());
+            $userDetails = auth('sanctum')->user();
+            $checkSettingLogo  = SystemSetup::where('app_status', 'Active')->first();
+            if (!empty($checkSettingLogo)) {
+                if ($request->hasFile('image')) {
+
+                    $file = $request->file('image');
+                    $file_size += $file->getSize();
+                    $file_size = number_format($file_size / 2048576, 2);
+                    //print_r($file_size.' MB');	
+                    //dd($file_size);
+                    if ($file_size > 2045) {
+                        return response()->json([
+                            'status' => 405,
+                            'message' => 'File too large!',
+                        ]);
+                    }
+                    /* check if the previous image exist then delete before uplaoding new one */
+                    $path = $checkSettingLogo->sch_logo; // this image colunm already have the image path in the database
+                    if (File::exists($path)) {
+                        File::delete($path);
+                    }
+                    /* image deleting ends here --*/
+                    $file = $request->file('image');
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = time() . '.' . $extension;
+                    $file->move('uploads/images_folder/', $filename);
+                    $checkSettingLogo->sch_logo = 'uploads/images_folder/' . $filename;
+                }
+                $checkSettingLogo->app_status = "Active";
+                $checkSettingLogo->add_date = date('d/m/Y H:i:s');
+                // now update everything here...
+                $checkSettingLogo->update();
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_action = "Update Logo";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, Updated school logo details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+                return response()->json([
+                    'status' => 200,
+                    'message' => "Logo Updated successfully",
+                ]);
+            } else if (empty($checkSettingLogo)) {
+                $save_setting_logo = new SystemSetup();
+                if ($request->hasFile('image')) {
+
+                    $file = $request->file('image');
+                    $file_size += $file->getSize();
+                    $file_size = number_format($file_size / 2048576, 2);
+                    //print_r($file_size.' MB');	
+                    //dd($file_size);
+                    if ($file_size > 2045) {
+                        return response()->json([
+                            'status' => 405,
+                            'message' => 'File too large!',
+                        ]);
+                    }
+                    $file = $request->file('image');
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = time() . '.' . $extension;
+                    $file->move('uploads/images_folder/', $filename);
+                    $save_setting_logo->sch_logo = 'uploads/images_folder/' . $filename;
+                }
+                $save_setting_logo->app_status = "Active";
+                $save_setting_logo->add_date = date('d/m/Y H:i:s');
+                $save_setting_logo->save();
+
+                $logs = new Activitity_log();
+                $logs->m_action = "Added Logo";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, Added school logo details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+                return response()->json([
+                    'status' => 200,
+                    'message' => "Logo uploaded successfully",
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found at the moment",
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
+    // upload school banner here...
+    public function uploadSchoolBanner(Request $request)
+    {
+        if (auth('sanctum')->check()) {
+            $file_size = 0;
+            //dd($request->all());
+            $userDetails = auth('sanctum')->user();
+            $checkSettingBanner  = SystemSetup::where('app_status', 'Active')->first();
+            if (!empty($checkSettingBanner)) {
+                if ($request->hasFile('image')) {
+                    $file = $request->file('image');
+                    $file_size += $file->getSize();
+                    $file_size = number_format($file_size / 2048576, 2);
+                    //print_r($file_size.' MB');	
+                    //dd($file_size);
+                    if ($file_size > 2045) {
+                        return response()->json([
+                            'status' => 405,
+                            'message' => 'File too large!',
+                        ]);
+                    }
+                    /* check if the previous image exist then delete before uplaoding new one */
+                    $path = $checkSettingBanner->sch_banner; // this image colunm already have the image path in the database
+                    if (File::exists($path)) {
+                        File::delete($path);
+                    }
+                    /* image deleting ends here --*/
+                    $file = $request->file('image');
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = time() . '.' . $extension;
+                    $file->move('uploads/images_folder/', $filename);
+                    $checkSettingBanner->sch_banner = 'uploads/images_folder/' . $filename;
+                }
+                $checkSettingBanner->app_status = "Active";
+                $checkSettingBanner->add_date = date('d/m/Y H:i:s');
+                // now update everything here...
+                $checkSettingBanner->update();
+                // history record here...
+                $logs = new Activitity_log();
+                $logs->m_action = "Update Banner";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, Updated school banner details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+                return response()->json([
+                    'status' => 200,
+                    'message' => "Logo Updated successfully",
+                ]);
+            } else if (empty($checkSettingBanner)) {
+                $save_setting_banner = new SystemSetup();
+                if ($request->hasFile('image')) {
+                    $file = $request->file('image');
+                    $file_size += $file->getSize();
+                    $file_size = number_format($file_size / 2048576, 2);
+                    //print_r($file_size.' MB');	
+                    //dd($file_size);
+                    if ($file_size > 2045) {
+                        return response()->json([
+                            'status' => 405,
+                            'message' => 'File too large!',
+                        ]);
+                    }
+                    $file = $request->file('image');
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = time() . '.' . $extension;
+                    $file->move('uploads/images_folder/', $filename);
+                    $save_setting_banner->sch_banner = 'uploads/images_folder/' . $filename;
+                }
+                $save_setting_banner->app_status = "Active";
+                $save_setting_banner->add_date = date('d/m/Y H:i:s');
+                $save_setting_banner->save();
+
+                $logs = new Activitity_log();
+                $logs->m_action = "Added Banner";
+                $logs->m_status = "Successful";
+                $logs->m_details = "$userDetails->name, Added school banner details";
+                $logs->m_date = date('d/m/Y H:i:s');
+                $logs->m_ip = request()->ip;
+                $logs->m_uid = $userDetails->id;
+                $logs->save();
+                return response()->json([
+                    'status' => 200,
+                    'message' => "Banner uploaded successfully",
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 404,
+                    'message' => "No record found at the moment",
                 ]);
             }
         } else {

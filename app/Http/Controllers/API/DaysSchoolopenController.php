@@ -102,10 +102,22 @@ class DaysSchoolopenController extends Controller
     {
         if (auth('sanctum')->check()) {
             $open_details = DaysSchoolOpen::where('open_status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'opend_record' => $open_details,
-            ]);
+
+            // $open_details = DaysSchoolOpen::query()
+            //     ->where('open_status', 'Active')
+            //     ->orderByDesc('id')
+            //     ->paginate('15');
+            if ($open_details) {
+                return response()->json([
+                    'status' => 200,
+                    'opend_record' => $open_details,
+                ]);
+            } else if (empty($open_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,
@@ -118,11 +130,22 @@ class DaysSchoolopenController extends Controller
     public function fetchCategory()
     {
         if (auth('sanctum')->check()) {
-            $allcategory_details = DaysSchoolOpen::where('open_status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'category_record' => $allcategory_details,
-            ]);
+            //$allcategory_details = DaysSchoolOpen::where('open_status', 'Active')->orderByDesc('id')->get();
+            $allcategory_details = DaysSchoolOpen::query()
+                ->where('open_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($allcategory_details) {
+                return response()->json([
+                    'status' => 200,
+                    'category_record' => $allcategory_details,
+                ]);
+            } else if (empty($allcategory_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,

@@ -27,7 +27,7 @@ class PsychomotorDomainController extends Controller
                 ->where('saff_status', 'Completed')
                 ->orderBy('saff_date', 'desc')
                 ->groupBy('saff_tid')
-                ->get();
+                ->paginate(15);
             if (!empty($get_domainAll)) {
                 return response()->json([
                     'status' => 200,

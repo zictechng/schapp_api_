@@ -32,11 +32,17 @@ class ResultController extends Controller
             $user_details = auth('sanctum')->user();
 
             //$all_result_details = ResultProcessStart::get();
-            $all_result_details = ResultProcessStart::where('r_status', '!=', 'Deleted')
-                ->orWhereNull('r_status')
-                ->orderBy('id', 'Desc')->get();
+            // $all_result_details = ResultProcessStart::where('r_status', '!=', 'Deleted')
+            //     ->orWhereNull('r_status')
+            //     ->orderBy('id', 'Desc')->get();
             $all_resultID = ResultProcessStart::where('r_status', '!=', 'Deleted')
                 ->first();
+            $all_result_details = ResultProcessStart::query()
+                ->where('r_status', '!=', 'Deleted')
+                ->orWhereNull('r_status')
+                ->orderByDesc('id')
+                ->paginate('15');
+
             if ($all_result_details) {
                 return response()->json([
                     'status' => 200,
@@ -44,12 +50,11 @@ class ResultController extends Controller
                         'allPostResult' => $all_result_details,
                         'result_ID' => $all_resultID,
                     ]
-
                 ]);
             } else if (empty($all_details)) {
                 return response()->json([
                     'status' => 404,
-                    'message' => 'No record fund',
+                    'message' => 'No record at the moment'
                 ]);
             } else {
                 return response()->json([
@@ -462,20 +467,22 @@ class ResultController extends Controller
     // process result save here...
     public function resultSingleSave(Request $request)
     {
+        //dd($request->all());
+
         $request->validate([
             'year' => 'required',
             'term' => 'required',
             'subject' => 'required',
             'class' => 'required',
-            'school_category' => 'required',
-
         ], [
             'year.required' => 'Academic year is required',
             'term.required' => 'Academic term is required',
             'subject.required' => 'Subject is required',
             'class.required' => 'Class is required',
-            'school_category.required' => 'School Category is required'
+            //'school_category.required' => 'School Category is required'
         ]);
+
+
         // Check if this result exist before saving it...
         $check_resultDetail = ResultTable::where('academic_year', $request->year)
             ->where('academy_term', $request->term)
@@ -1378,10 +1385,17 @@ class ResultController extends Controller
     public function fetchGrade()
     {
         if (auth('sanctum')->check()) {
-            $all_grade = StudentPosition::where('p_status', '!=', 'Deleted')
+            // $all_grade = StudentPosition::where('p_status', '!=', 'Deleted')
+            //     ->orWhereNull('p_status')
+            //     ->orderBy('id', 'Desc')
+            //     ->groupBy('sch_class')->get();
+
+            $all_grade = StudentPosition::query()
+                ->where('p_status', '!=', 'Deleted')
                 ->orWhereNull('p_status')
-                ->orderBy('id', 'Desc')
-                ->groupBy('sch_class')->get();
+                ->groupBy('sch_class')
+                ->orderByDesc('id')
+                ->paginate('15');
             if ($all_grade) {
                 return response()->json([
                     'status' => 200,
@@ -1390,7 +1404,7 @@ class ResultController extends Controller
             } else if (empty($all_grade)) {
                 return response()->json([
                     'status' => 404,
-                    'message' => 'No record fund',
+                    'message' => 'No record at the moment'
                 ]);
             } else {
                 return response()->json([
@@ -2663,18 +2677,22 @@ class ResultController extends Controller
     public function fetchAllGraduated()
     {
         if (auth('sanctum')->check()) {
-            $fetch_grdaDetails = Graduation::where('g_status', 'Graduated')->get();
-            if (!empty($fetch_grdaDetails)) {
+            //$fetch_grdaDetails = Graduation::where('g_status', 'Graduated')->get();
+            $fetch_grdaDetails = Graduation::query()
+                ->where('g_status', 'Graduated')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($fetch_grdaDetails) {
                 return response()->json([
                     'status' => 200,
                     'graduate_Details' => [
                         'proDetails' => $fetch_grdaDetails,
                     ]
                 ]);
-            } else {
+            } else if (empty($fetch_grdaDetails)) {
                 return response()->json([
                     'status' => 404,
-                    'message' => "No record found at the moment",
+                    'message' => 'No record at the moment'
                 ]);
             }
         } else {
@@ -2800,12 +2818,11 @@ class ResultController extends Controller
                 ->get();
 
             if ($get_allStudent == "") {
-                dd($get_allStudent);
+
                 return response()->json([
                     'status' => 404,
                     'message' => "No record found at the moment",
                 ]);
-                dd($get_allStudent);
             } else if (!empty($get_allStudent)) {
                 $class = ClassModel::where('id', $request->class_name)->first();
                 return response()->json([

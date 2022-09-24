@@ -151,7 +151,7 @@ class AssignSubjectController extends Controller
             ,sub_teacher_name, sub_subject_name, sub_status, sub_tid,sub_addby,sub_date')
                 ->orderBy('id', 'desc')
                 ->groupBy('sub_teacher_id')
-                ->get();
+                ->paginate(15);
             if (!empty($get_subjectAll)) {
                 return response()->json([
                     'status' => 200,

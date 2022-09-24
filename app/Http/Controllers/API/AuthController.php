@@ -5,11 +5,14 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Activitity_log;
 use App\Models\LoginStatus;
+use App\Models\Student;
+use App\Models\SystemSetup;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Stevebauman\Location\Facades\Location;
 
 class AuthController extends Controller
 {
@@ -100,6 +103,28 @@ class AuthController extends Controller
                     $token = $user->createToken($user->email . '_Token', [''])->plainTextToken;
                 }
                 /* ends here */
+
+                // get logo details here...
+                $fetch_details = SystemSetup::where('app_status', 'Active')->first();
+                $agent = new \Jenssegers\Agent\Agent;
+                $broswer = request()->userAgent();
+                //$geoIP2 = geoip()->getLocation($_SERVER['REMOTE_ADDR']);
+                $my_ip = $request->ip();
+                $geoData = geoip($my_ip);
+                $mydata = geoip($my_ip);
+
+                $mydevice_name = $agent->device();
+                $platform = $agent->platform();
+                if ($agent->isMobile()) {
+                    $user_device = "Mobile Device";
+                } else if ($agent->isDesktop()) {
+                    $user_device = "Destop/Laptop Device";
+                } else if ($agent->isTablet()) {
+                    $user_device = "Table Device";
+                }
+                $platform = $agent->platform();
+                $locationData = Location::get($request->ip());
+
                 $logs = new Activitity_log();
                 $logs->m_username = $user->username;
                 $logs->m_action = "Login";
@@ -107,7 +132,18 @@ class AuthController extends Controller
                 $logs->m_details = "$user->name, user login to account";
                 $logs->m_date = date('d/m/Y H:i:s');
                 $logs->m_uid = $user->id;
-                $logs->m_ip = request()->ip;
+                $logs->m_broswer = $broswer;
+                $logs->m_country_name = $mydata->country;
+                $logs->m_country_code = $mydata->iso_code;
+                $logs->m_currence = $mydata->currency;
+                $logs->m_city = $mydata->city;
+                $logs->m_device_name = $mydevice_name;
+                $logs->m_platform = $platform;
+                $logs->m_deivce_type = $user_device;
+                $logs->m_latitude = $mydata->lat;
+                $logs->m_longitude = $mydata->lon;
+
+                $logs->m_ip = $request->ip();
                 $logs->save();
 
                 // insert for logged in table here
@@ -130,6 +166,8 @@ class AuthController extends Controller
                         ]);
                 }
                 $getUserLog = LoginStatus::where('login_uid', $tid)->first();
+
+
                 //
                 return response()->json([
                     'status' => 200,
@@ -140,12 +178,140 @@ class AuthController extends Controller
                         'userDetails' => $user,
                         'loggedUID' => $getUserLog,
                         'logged_id' => $tid,
+                        'setting_record' => $fetch_details,
+                        'user_ip' => $request->ip(),
                     ]
                 ]);
             }
         }
     }
 
+    // login student here...
+    public function loginStudent(Request $request)
+    {
+        $permitted_chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $tid = substr(str_shuffle($permitted_chars), 0, 30);
+        /* validate details here */
+        $validator = Validator::make($request->all(), [
+
+            'admin_number' => 'required|max:191',
+            'password' => 'required|min:8',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                $errors = $validator->errors(),
+                // 'validator_err' => $validator->messages(),
+                'validation_errors' => $errors,
+            ]);
+        } else {
+            $user_student = User::where('username', $request->admin_number)->first();
+            if (!$user_student || !Hash::check($request->password, $user_student->password)) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Invalid Credentials',
+                ]);
+            } else {
+
+                $role = "Student";
+                if ($user_student->role == 'Admin') // 1= admin, 0 = normal user
+                {
+                    $role = 'admin';
+                    $token = $user_student->createToken($user_student->email . '_AdminToken', ['server:admin'])->plainTextToken;
+                } else if ($user_student->role == 'User') {
+                    $role = 'user';
+                    $token = $user_student->createToken($user_student->email . '_Token', [''])->plainTextToken;
+                } else {
+                    $role = 'student';
+                    $token = $user_student->createToken($user_student->email . '__StudentToken', [''])->plainTextToken;
+                }
+                // get user details from student table here...
+                $studentDetail = Student::where('st_admin_number', $user_student->username)->first();
+                if ($user_student) // 1= admin, 0 = normal user
+                {
+                    //$role = 'admin';
+
+
+                    $agent = new \Jenssegers\Agent\Agent;
+                    $broswer = request()->userAgent();
+                    //$geoIP2 = geoip()->getLocation($_SERVER['REMOTE_ADDR']);
+                    $my_ip = $request->ip();
+                    $geoData = geoip($my_ip);
+                    $mydata = geoip($my_ip);
+
+                    $mydevice_name = $agent->device();
+                    $platform = $agent->platform();
+                    if ($agent->isMobile()) {
+                        $user_device = "Mobile Device";
+                    } else if ($agent->isDesktop()) {
+                        $user_device = "Destop/Laptop Device";
+                    } else if ($agent->isTablet()) {
+                        $user_device = "Table Device";
+                    }
+                    $platform = $agent->platform();
+                    $locationData = Location::get($request->ip());
+
+                    $logs = new Activitity_log();
+                    $logs->m_username = $user_student->st_admin_number;
+                    $logs->m_action = "Login";
+                    $logs->m_status = "Successful";
+                    $logs->m_details = $user_student->username . " user login to account";
+                    $logs->m_date = date('d/m/Y H:i:s');
+                    $logs->m_uid = $user_student->id;
+                    $logs->m_broswer = $broswer;
+                    $logs->m_country_name = $mydata->country;
+                    $logs->m_country_code = $mydata->iso_code;
+                    $logs->m_currence = $mydata->currency;
+                    $logs->m_city = $mydata->city;
+                    $logs->m_device_name = $mydevice_name;
+                    $logs->m_platform = $platform;
+                    $logs->m_deivce_type = $user_device;
+                    $logs->m_latitude = $mydata->lat;
+                    $logs->m_longitude = $mydata->lon;
+                    $logs->m_ip = $request->ip();
+                    $logs->save();
+
+                    // insert for logged in table here
+                    $logg_in = new LoginStatus();
+                    $logg_in->user_id = $user_student->id;
+                    $logg_in->user_name = $request->admin_number;
+                    $logg_in->login_name = $user_student->other_name;
+                    $logg_in->login_date = date('d/m/Y H:i:s');
+                    $logg_in->login_nature = "User Logged in Successfully";
+                    $logg_in->login_uid = $tid;
+                    $logg_in->login_status = '1';
+                    $logg_in->logg_action = 'Authenticated';
+                    $logg_in->login_role = "Student";
+                    $logg_in->save();
+
+                    $getUserLog = LoginStatus::where('login_uid', $tid)->first();
+                    $fetch_details = SystemSetup::where('app_status', 'Active')->first();
+                    //
+                    return response()->json([
+                        'status' => 200,
+                        'loginState' => [
+                            'token' => $token,
+                            'message' => 'Logged In Successful.',
+                            'role' => "Student",
+                            'userDetail' => $studentDetail,
+                            'loggedUID' => $getUserLog,
+                            'logged_id' => $tid,
+                            'setting_record' => $fetch_details,
+                            'user_ip' => $request->ip(),
+                        ]
+                    ]);
+                } else if (empty($user_student)) {
+                    return response()->json([
+                        'status' => 403,
+                        'message' => 'Sorry, login failed! Try again',
+                    ]);
+                }
+                /* this will help check user role permission */
+                // $token = $user_student->createToken($user_student->st_admin_number . '_Token', [''])->plainTextToken;
+
+                /* ends here */
+            }
+        }
+    }
     // check if user is looged in and fetch is logged UID here..
     public function fetchLoggedINUser($id)
     {
@@ -157,8 +323,15 @@ class AuthController extends Controller
         $get_myMessage = DB::table('message_systems')
             ->selectRaw('count(id) as total_message')
             ->where('mes_status', 'Active')
-            ->where('receiver_user_id', $loggedInUser->staff_id)
+            ->where('receiver_user_id', $loggedInUser->id)
             ->first();
+        // get user details from student table here...
+        $studentDetail = Student::where('st_admin_number', $loggedInUser->username)->first();
+        // get logo details here...
+        $fetch_details = SystemSetup::where('app_status', 'Active')->first();
+
+        $ip1 = request()->ip();
+
         if ($checkUserLogged) {
             return response()->json([
                 'status' => 200,
@@ -166,6 +339,10 @@ class AuthController extends Controller
                     'logginUser' => $loggedInUser,
                     'checkUserLoggin' => $checkUserLogged,
                     'myMessage' => $get_myMessage,
+                    'studentDetails' => $studentDetail,
+                    'studentDetails' => $studentDetail,
+                    'setting_record' => $fetch_details,
+                    'user_ip' => $ip1,
                 ]
             ]);
         }
@@ -306,10 +483,15 @@ class AuthController extends Controller
     public function getBirthday()
     {
         $ldate = date('Y-m-d');
+        $today = now();
+
         $get_bith = DB::table('students')
             ->selectRaw('count(id) as birthday_number')
-            ->where('dob', '=', $ldate)
+            ->whereMonth('dob', $today->month)
+            ->whereDay('dob', $today->day)
+            ->where('acct_status', 'Active')
             ->first();
+
         return response()->json([
             'status' => 200,
             'birthday' => $get_bith,

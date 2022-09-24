@@ -181,11 +181,15 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
-        Jenssegers\Agent\AgentServiceProvider::class,
+
+
+
         /*
          * Package Service Providers...
          */
-
+        Jenssegers\Agent\AgentServiceProvider::class,
+        \Torann\GeoIP\GeoIPServiceProvider::class,
+        \Stevebauman\Location\LocationServiceProvider::class,
         /*
          * Application Service Providers...
          */
@@ -217,6 +221,8 @@ return [
         // 'ExampleClass' => App\Example\ExampleClass::class,
         'Agent' => Jenssegers\Agent\Facades\Agent::class,
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
+        'Location' => Stevebauman\Location\Facades\Location::class,
+        'GeoIP' => \Torann\GeoIP\Facades\GeoIP::class,
 
     ])->toArray(),
 

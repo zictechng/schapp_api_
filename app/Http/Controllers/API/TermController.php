@@ -75,11 +75,22 @@ class TermController extends Controller
     public function fetchTerm()
     {
         if (auth('sanctum')->check()) {
-            $allterm_details = TermModel::where('t_status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'term_record' => $allterm_details,
-            ]);
+            //$allterm_details = TermModel::where('t_status', 'Active')->orderByDesc('id')->get();
+            $allterm_details = TermModel::query()
+                ->where('t_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($allterm_details) {
+                return response()->json([
+                    'status' => 200,
+                    'term_record' => $allterm_details,
+                ]);
+            } else if (empty($allterm_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,

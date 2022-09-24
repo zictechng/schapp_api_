@@ -83,18 +83,21 @@ class SubjectController extends Controller
     public function fetchSubject()
     {
         if (auth('sanctum')->check()) {
+            //$subject_details = Subject::where('sub_status', 'Active')->orderByDesc('id')->get();
 
-            if (auth('sanctum')->check()) {
-
-                $subject_details = Subject::where('sub_status', 'Active')->orderByDesc('id')->get();
+            $subject_details = Subject::query()
+                ->where('sub_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($subject_details) {
                 return response()->json([
                     'status' => 200,
                     'subject_record' => $subject_details,
                 ]);
-            } else {
+            } else if (empty($ca_details)) {
                 return response()->json([
-                    'status' => 402,
-                    'message' => 'Not authorized',
+                    'status' => 404,
+                    'message' => 'No record at the moment'
                 ]);
             }
         } else {
@@ -104,6 +107,32 @@ class SubjectController extends Controller
             ]);
         }
     }
+
+    // fetch subject to show in entry result place
+
+    public function getAllSubject()
+    {
+        if (auth('sanctum')->check()) {
+            $subject_details = Subject::where('sub_status', 'Active')->orderByDesc('id')->get();
+            if ($subject_details) {
+                return response()->json([
+                    'status' => 200,
+                    'subject_record' => $subject_details,
+                ]);
+            } else if (empty($ca_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Please, login to continue',
+            ]);
+        }
+    }
+
     // delete subject goes here...
 
     public function deleteSubject($id)

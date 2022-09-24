@@ -27,7 +27,7 @@ class StudentCommentController extends Controller
             comm_status, comm_addby, comm_date, comm_tid')
                 ->where('comm_status', '=', 'Active')
                 ->groupBy('comm_tid')
-                ->get();
+                ->paginate(15);
 
             if (!empty($comm_details)) {
                 return response()->json([

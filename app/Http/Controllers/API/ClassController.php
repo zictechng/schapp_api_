@@ -97,17 +97,21 @@ class ClassController extends Controller
         if (auth('sanctum')->check()) {
 
             $user_details = auth('sanctum')->user();
-            //$userWallet = User::where('id', $sender_details->id)->where('acct_status', 'Active')->sum('gamount');
-            $class_details = ClassModel::where('status', 'Active')->orderByDesc('id')->get();
-            if (!empty($class_details)) {
+            //$class_details = ClassModel::where('status', 'Active')->orderByDesc('id')->get();
+
+            $class_details = ClassModel::query()
+                ->where('status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($class_details) {
                 return response()->json([
                     'status' => 200,
                     'class_record' => $class_details,
                 ]);
-            } else {
+            } else if (empty($ca_details)) {
                 return response()->json([
                     'status' => 404,
-                    'message' => "No record found",
+                    'message' => 'No record at the moment'
                 ]);
             }
         } else {

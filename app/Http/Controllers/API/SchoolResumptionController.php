@@ -81,11 +81,23 @@ class SchoolResumptionController extends Controller
     public function fetchResumption()
     {
         if (auth('sanctum')->check()) {
-            $resump_details = SchoolResumption::where('status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'resump_record' => $resump_details,
-            ]);
+            //$resump_details = SchoolResumption::where('status', 'Active')->orderByDesc('id')->get();
+
+            $resump_details = SchoolResumption::query()
+                ->where('status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($resump_details) {
+                return response()->json([
+                    'status' => 200,
+                    'resump_record' => $resump_details,
+                ]);
+            } else if (empty($resump_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,

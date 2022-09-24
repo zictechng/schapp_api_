@@ -74,16 +74,20 @@ class SchoolCategoryController extends Controller
     public function fetchCategory()
     {
         if (auth('sanctum')->check()) {
-            $allcategory_details = SchoolCategory::where('sc_status', 'Active')->orderByDesc('id')->get();
+            //$allcategory_details = SchoolCategory::where('sc_status', 'Active')->orderByDesc('id')->get();
+            $allcategory_details = SchoolCategory::query()
+                ->where('sc_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
             if ($allcategory_details) {
                 return response()->json([
                     'status' => 200,
                     'category_record' => $allcategory_details,
                 ]);
-            } else {
+            } else if (empty($allcategory_details)) {
                 return response()->json([
                     'status' => 404,
-                    'message' => "No record found",
+                    'message' => 'No record at the moment'
                 ]);
             }
         } else {

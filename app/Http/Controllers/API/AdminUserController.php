@@ -19,16 +19,20 @@ class AdminUserController extends Controller
 
             $user_details = auth('sanctum')->user();
             //$userWallet = User::where('id', $sender_details->id)->where('acct_status', 'Active')->sum('gamount');
-            $all_details = AdminUser::where('acct_status', 'Active')->orderByDesc('id')->get();
+            //$all_details = AdminUser::where('acct_status', 'Active')->orderByDesc('id')->get();
+            $all_details = AdminUser::query()
+                ->where('acct_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
             if ($all_details) {
                 return response()->json([
                     'status' => 200,
                     'adminuser_record' => $all_details,
                 ]);
-            } else if (empty($$all_details)) {
+            } else if (empty($all_details)) {
                 return response()->json([
                     'status' => 404,
-                    'adminuser_record' => 'No record fund',
+                    'message' => 'No record at the moment'
                 ]);
             } else {
                 return response()->json([

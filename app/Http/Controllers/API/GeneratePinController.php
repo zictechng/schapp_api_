@@ -81,7 +81,9 @@ class GeneratePinController extends Controller
                 ,card_date, card_tid')
                 ->orderBy('card_date', 'desc')
                 ->groupBy('card_tid')
-                ->get();
+                ->paginate('15');
+
+
             if (!empty($get_pinsAll)) {
                 return response()->json([
                     'status' => 200,

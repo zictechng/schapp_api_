@@ -33,7 +33,9 @@ class User extends Authenticatable
         'reg_status',
         'occupation',
         'photo',
-        'role'
+        'role',
+        'student_id',
+        'staff_id',
     ];
 
     /**

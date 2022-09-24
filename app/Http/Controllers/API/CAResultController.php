@@ -23,11 +23,22 @@ class CAResultController extends Controller
     public function getAllCA()
     {
         if (auth('sanctum')->check()) {
-            $ca_details = CAResultProcessStart::where('status', '!=', 'Deleted')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'ca_record' => $ca_details,
-            ]);
+            //$ca_details = CAResultProcessStart::where('status', '!=', 'Deleted')->orderByDesc('id')->get();
+            $ca_details = CAResultProcessStart::query()
+                ->where('status', '!=', 'Deleted')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($ca_details) {
+                return response()->json([
+                    'status' => 200,
+                    'ca_record' => $ca_details,
+                ]);
+            } else if (empty($ca_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,

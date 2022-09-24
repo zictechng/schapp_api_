@@ -73,11 +73,23 @@ class CurrentSessionController extends Controller
     {
         if (auth('sanctum')->check()) {
 
-            $current_details = CurrentSession::where('session_status', 'Active')->orderByDesc('id')->get();
-            return response()->json([
-                'status' => 200,
-                'c_record' => $current_details,
-            ]);
+            //$current_details = CurrentSession::where('session_status', 'Active')->orderByDesc('id')->get();
+
+            $current_details = CurrentSession::query()
+                ->where('session_status', 'Active')
+                ->orderByDesc('id')
+                ->paginate('15');
+            if ($current_details) {
+                return response()->json([
+                    'status' => 200,
+                    'c_record' => $current_details,
+                ]);
+            } else if (empty($current_details)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No record at the moment'
+                ]);
+            }
         } else {
             return response()->json([
                 'status' => 401,
