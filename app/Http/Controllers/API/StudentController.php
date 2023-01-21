@@ -1456,4 +1456,24 @@ class StudentController extends Controller
             ]);
         }
     }
+
+    // fetch active student to show in graph in the dashboard here....
+    public function fetchActiveStudent()
+    {
+
+        $getActive = Student::where('acct_status', 'Active')->count('id');
+        //->orderByDesc('st_admin_number');
+        if ($getActive) {
+            return response()->json([
+                'status' => 200,
+                'active_student_list' => $getActive,
+                'message' => 'Successful',
+            ]);
+        } else if (empty($getActive)) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'No record fund',
+            ]);
+        }
+    }
 }

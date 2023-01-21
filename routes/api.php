@@ -307,6 +307,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('fetch_staff_dash1', [StaffController::class, 'getStaffStudent']);
     Route::get('fetch_dash_details', [StaffController::class, 'fetchDashDetails']);
     Route::get('fetch_dash_log', [StaffController::class, 'fetchLogDetails']);
+    Route::get('fetch_active_student', [StaffController::class, 'fetchActiveStudent']);
 
 
     // staff/ teacher portal routes goes here
